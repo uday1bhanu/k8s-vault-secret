@@ -26,7 +26,9 @@
     $ brew install consul
     $ brew install vault
     ```
-6. .
+6. 
+```
+    .
     ├── certs
     │   ├── ca-key.pem
     │   ├── ca.csr
@@ -50,6 +52,7 @@
         ├── config.json
         ├── deployment.yaml
         └── service.json
+```
 
 ## Running consul and vault
 
@@ -122,17 +125,17 @@ $ kubectl apply -f vault/deployment.yaml
 
 #### verification
 ```
-$ kubectl port-forward vault-xxxxxxxx-xxxxxx 8200:8200
+$ kubectl exec -it vault-xxxxxxxx-xxxxxx -- sh
 
-$ export VAULT_ADDR=https://127.0.0.1:8200
-$ export VAULT_CACERT="certs/ca.pem"
+$ export VAULT_ADDR=https://vault:8200
+$ export VAULT_CACERT="/etc/tls/ca.pem"
 
 $ vault operator init -key-shares=1 -key-threshold=1
 $ vault operator unseal
 
 $ vault status
 $ vault login
-$ vault kv put secret/test/vault/auto/secret AWS_SECRET_ACCESS_KEY=sssshhhhIAMSecret
+$ vault kv put secret/test/vault/auto/secret AWS_SECRET_ACCESS_KEY=sssshhhhIAMSecret SAMPLE_APP_USERNAME=abcd SAMPLE_APP_PASSWORD=dcba
 $ vault kv get secret/test/vault/auto/secret
 ```
 
@@ -172,6 +175,7 @@ $ cd ..
 $ kubectl create secret vault-consul-ca --from-file=certs/ca-key.pem --from-file=certs/ca.pem
 $ kubectl apply -f app/tester-sa.yaml
 $ kubectl apply -f app/deployment.yaml
+$ kubectl apply -f app/sample-app-deployment.yaml
 ```
 
 ## verification

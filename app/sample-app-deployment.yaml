@@ -1,0 +1,135 @@
+# Source: sample-sample-app/templates/deployment.yaml
+# Source: anaplan-microservice/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    run: "sample-sample-app"
+  name: "sample-sample-app"
+  namespace: "dev"
+spec:
+  ports:
+   - name: api
+     port: 8080
+     protocol: "TCP"
+     targetPort: 8080
+  selector:
+    run: "sample-sample-app"
+  sessionAffinity: None
+  type: ClusterIP
+---
+# Source: sample-sample-app/templates/deployment.yaml
+# Source: anaplan-microservice/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  annotations:
+    deployment.kubernetes.io/revision: "1"
+  labels:
+    group: anaplan
+    type: anaplan-microservice
+    feature: "sample"
+    run: "sample-sample-app"
+  name: "sample-sample-app"
+  namespace: "dev"
+spec:
+  minReadySeconds: 10
+  progressDeadlineSeconds: 360
+  replicas: 3
+  selector:
+    matchLabels:
+      run: "sample-sample-app"
+  strategy:
+    
+      rollingUpdate:
+        maxSurge: "50%"
+        maxUnavailable: "50%"
+    
+  template:
+    metadata:
+      annotations:
+        vault.security/enabled: "true"
+        vault.security/vault-addr: "https://vault:8200"
+        vault.security/vault-role: "tester"
+        vault.security/vault-path: "secret/test/vault/auto/secret"
+        vault.security/vault-tls-secret-name: "vault-consul-ca"
+      labels:
+        run: "sample-sample-app"
+    spec:
+      serviceAccountName: tester
+      containers:
+      - name: "sample-sample-app"
+        image: "uday1bhanu/sample-app:v1"
+        command:
+          - "sh"
+          - "-c"
+          - "echo $AWS_SECRET_ACCESS_KEY && env && echo going to sleep... && java ${JAVA_OPTIONS} -jar /sample-app-0.0.1-SNAPSHOT.jar"
+        ports:
+          - name: api
+            containerPort: 8080
+        resources:
+          limits:
+            cpu: "1.5"
+            memory: "2048Mi"
+          requests:
+            cpu: "1.5"
+            memory: "1024Mi"
+        imagePullPolicy: "IfNotPresent"
+        tty: true
+        stdin: true
+        envFrom:
+        - configMapRef:
+            name: sample-featureconfig
+            optional: true
+        env:
+        - name:  AWS_SECRET_ACCESS_KEY
+          value: vault:AWS_SECRET_ACCESS_KEY
+        - name: APPLICATION_CHART_VERSION
+          value: 0.2.76
+        - name: APPLICATION_BUILD_VERSION
+          value: 1.0.290
+        - name: JAVA_OPTIONS
+          value: "-XX:+UnlockExperimentalVMOptions -XX:+UseCGroupMemoryLimitForHeap -XX:MaxRAMFraction=2"
+        - name: APP_USERNAME
+          value: vault:SAMPLEAPP_APP_USERNAMR
+        - name: APP_PASSWORD
+          value: vault:SAMPLEAPP_APP_PASSWORD
+    
+      
+        livenessProbe:
+          
+          httpGet:
+            port: 8080
+            path: /actuator/health
+            httpHeaders:
+          
+            - name: Content-Type
+              value: application/vnd.spring-boot.actuator.v2+json;charset=UTF-8
+          
+          
+          
+          initialDelaySeconds: 65
+          periodSeconds: 5
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 24
+      
+      
+        readinessProbe:
+          
+          httpGet:
+            port: 8080
+            path: /actuator/health
+            httpHeaders:
+          
+            - name: Content-Type
+              value: application/vnd.spring-boot.actuator.v2+json;charset=UTF-8
+          
+          
+          
+          initialDelaySeconds: 60
+          periodSeconds: 5
+          timeoutSeconds: 10
+          successThreshold: 1
+          failureThreshold: 24
+---
